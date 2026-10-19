@@ -7,6 +7,7 @@ import { createUtilityButtons } from '../ui/UtilityButtons';
 import { requestFullscreenForGameplayIfMobile } from '../yandex/PlatformUtils';
 import { t, type TranslationKey } from '../i18n';
 import { setGameplayWantsActive } from '../yandex/GameplayApi';
+import { notifyGameReady } from '../yandex/sdk';
 import { SaveSystem, type PlayerData } from '../yandex/CloudSave';
 
 // Экономика прокачки. У hp/dmg/ore/mult единый темп роста цены 1.34:
@@ -48,6 +49,26 @@ export function getUpgradeCost(id: string, level: number): number {
 export function isUpgradeMaxed(id: string, level: number): boolean {
     const def = UPGRADE_DEFS[id];
     return def.maxLevel !== undefined && level >= def.maxLevel;
+}
+
+// Текущие уровни всех апгрейдов из сохранения (ключи как в UPGRADE_DEFS).
+function getUpgradeLevels(data: PlayerData): Record<string, number> {
+    return {
+        hp: data.lvlHp,
+        dmg: data.lvlDamage,
+        ore: data.lvlOre,
+        mult: data.lvlMult,
+        forge: data.lvlBench
+    };
+}
+
+// Есть ли апгрейд, который можно купить прямо сейчас.
+function canAffordAnyUpgrade(data: PlayerData): boolean {
+    const levels = getUpgradeLevels(data);
+    return Object.keys(UPGRADE_DEFS).some((id) => {
+        const level = levels[id] ?? 0;
+        return !isUpgradeMaxed(id, level) && data.balance >= getUpgradeCost(id, level);
+    });
 }
 
 export class MainMenuScene extends Phaser.Scene {
@@ -109,15 +130,13 @@ export class MainMenuScene extends Phaser.Scene {
             this.scene.start('LeaderboardScene');
         }, '26px');
 
-        const canUpgrade = this.pData.balance >= getUpgradeCost('hp', this.pData.lvlHp) ||
-                           this.pData.balance >= getUpgradeCost('mult', this.pData.lvlMult) ||
-                           this.pData.balance >= getUpgradeCost('ore', this.pData.lvlOre) ||
-                           this.pData.balance >= getUpgradeCost('dmg', this.pData.lvlDamage);
-
-        if (canUpgrade) {
+        if (canAffordAnyUpgrade(this.pData)) {
             const dot = this.add.circle(995, 563, 12, 0xff2222).setStrokeStyle(2, 0xffffff).setDepth(10);
             this.tweens.add({ targets: dot, scale: 1.2, yoyo: true, repeat: -1, duration: 500 });
         }
+
+        // Меню загружено и интерактивно — сообщаем платформе (один раз за сеанс).
+        notifyGameReady();
     }
 
     private buildStatsPanel(centerX: number, centerY: number) {

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { drawBevelRect } from './bevel';
 import { STONE_COLORS, tintBevelColors, type BevelColors } from './theme';
+import { playClickSound } from '../audio/clickSound';
 
 // "Каменная" кнопка, рисуется процедурно. При наведении — подсветка и
 // стрелки "> ТЕКСТ <", при нажатии — вдавливается.
@@ -15,14 +16,6 @@ export interface StoneButtonHandle {
 export interface StoneButtonOptions {
     // Оттенок вместо серого камня, например ACCENT.gold.
     accentColor?: number;
-}
-
-function playClickSound(scene: Phaser.Scene) {
-    try {
-        if (scene.cache.audio.exists('click-menu')) {
-            scene.sound.play('click-menu', { volume: 0.5 });
-        }
-    } catch (e) { /* не критично */ }
 }
 
 type ButtonState = 'idle' | 'hover' | 'down' | 'disabled';

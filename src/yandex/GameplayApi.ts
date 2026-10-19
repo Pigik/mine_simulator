@@ -1,11 +1,7 @@
 // GameplayAPI Яндекс Игр: платформа должна знать, когда идёт игра.
 // start() вызывается, только если сцена хочет активный геймплей (wantsActive)
 // и платформа не поставила игру на паузу (реклама, свёрнутая вкладка).
-
-function getYsdk(): any | null {
-    const w = window as any;
-    return (typeof w.ysdk !== 'undefined' && w.ysdk !== null) ? w.ysdk : null;
-}
+import { getYsdk, waitForYsdk } from './sdk';
 
 function getGameplayApi(): any | null {
     try {
@@ -24,10 +20,11 @@ let reportedActive = false;
 function syncState(): void {
     const shouldBeActive = wantsActive && !platformPaused;
     if (shouldBeActive === reportedActive) return;
-    reportedActive = shouldBeActive;
 
+    // Пока SDK не готов, состояние не фиксируем — отправим после инициализации.
     const api = getGameplayApi();
     if (!api) return;
+    reportedActive = shouldBeActive;
 
     try {
         if (shouldBeActive) api.start();
@@ -45,12 +42,7 @@ export function setGameplayWantsActive(active: boolean): void {
 export function initGameplayApiTracking(): void {
     (async () => {
         try {
-            const w = window as any;
-            const readyPromise: Promise<any> | undefined = w.ysdkReady;
-            const ysdk = (readyPromise && typeof readyPromise.then === 'function')
-                ? await readyPromise
-                : getYsdk();
-
+            const ysdk = await waitForYsdk(null);
             if (!ysdk || typeof ysdk.on !== 'function') return;
 
             ysdk.on('game_api_pause', () => {
@@ -61,6 +53,8 @@ export function initGameplayApiTracking(): void {
                 platformPaused = false;
                 syncState();
             });
+
+            syncState();
         } catch (e) { /* SDK недоступен */ }
     })();
 }

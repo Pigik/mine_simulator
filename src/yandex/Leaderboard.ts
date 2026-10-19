@@ -4,13 +4,9 @@
 // Монеты за всю игру хранятся в extraData и в сортировке не участвуют.
 
 import { t } from '../i18n';
+import { getYsdk } from './sdk';
 
 export const LEADERBOARD_NAME = 'depth_leaderboard';
-
-function getYsdk(): any | null {
-    const w = window as any;
-    return (typeof w.ysdk !== 'undefined' && w.ysdk !== null) ? w.ysdk : null;
-}
 
 // Не бросает исключений: если SDK недоступен или игрок не авторизован, ничего не делает.
 export function submitScore(depth: number, totalCoinsMined: number): void {

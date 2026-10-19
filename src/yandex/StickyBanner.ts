@@ -1,14 +1,12 @@
 // Стики-баннер Яндекс Игр. Показывается один раз на весь сеанс.
 // Место баннера настраивается в консоли разработчика (раздел "Реклама"),
 // баннер не перекрывает canvas.
+import { waitForYsdk } from './sdk';
+
 export function initStickyBanner(): void {
     (async () => {
         try {
-            const w = window as any;
-            const readyPromise: Promise<any> | undefined = w.ysdkReady;
-            const ysdk = (readyPromise && typeof readyPromise.then === 'function')
-                ? await readyPromise
-                : (typeof w.ysdk !== 'undefined' ? w.ysdk : null);
+            const ysdk = await waitForYsdk(null);
 
             if (!ysdk || !ysdk.adv || typeof ysdk.adv.showBannerAdv !== 'function') return;
 

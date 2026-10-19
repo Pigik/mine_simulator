@@ -1,12 +1,13 @@
 // Сохранение прогресса: localStorage + облако Яндекс Игр (ysdk.player).
 // Яндекс Игры требуют, чтобы прогресс переносился между устройствами.
 //
-// - initCloudSave() один раз при старте читает облако в cache;
+// - initCloudSave() один раз при старте ждёт SDK и читает облако в cache;
 //   дальше SaveSystem.load()/save() работают синхронно с cache.
 // - save() пишет в localStorage сразу и в облако в фоне.
 // - Вне Яндекс Игр работает только localStorage.
 // - Если в облаке пусто, а локально прогресс есть — он отправляется в облако.
 //   Если в облаке прогресс есть — он в приоритете.
+import { waitForYsdk } from './sdk';
 
 export interface PlayerData {
     balance: number;
@@ -61,11 +62,6 @@ function saveLocal(data: PlayerData): void {
     } catch (e) { /* localStorage недоступен */ }
 }
 
-function getYsdk(): any | null {
-    const w = window as any;
-    return (typeof w.ysdk !== 'undefined' && w.ysdk !== null) ? w.ysdk : null;
-}
-
 // Текущий прогресс. Сразу заполняется из localStorage, до initCloudSave().
 let cache: PlayerData = loadLocal() ?? emptyPlayerData();
 
@@ -74,7 +70,8 @@ let cloudPlayer: any | null = null;
 
 async function loadCloud(): Promise<PlayerData | null> {
     try {
-        const ysdk = getYsdk();
+        // SDK инициализируется асинхронно, без ожидания облако не подключится.
+        const ysdk = await waitForYsdk();
         if (!ysdk || typeof ysdk.getPlayer !== 'function') return null;
 
         cloudPlayer = await ysdk.getPlayer().catch(() => null);

@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { drawBevelRect } from './bevel';
 import { STONE_COLORS } from './theme';
+import { playClickSound } from '../audio/clickSound';
 
 // Маленькая квадратная кнопка-иконка (звук, полноэкранный режим).
 
@@ -11,14 +12,6 @@ export interface IconToggleButtonHandle {
 }
 
 type ButtonState = 'idle' | 'hover' | 'down';
-
-function playClickSound(scene: Phaser.Scene) {
-    try {
-        if (scene.cache.audio.exists('click-menu')) {
-            scene.sound.play('click-menu', { volume: 0.5 });
-        }
-    } catch (e) { /* не критично */ }
-}
 
 export function createIconToggleButton(
     scene: Phaser.Scene,

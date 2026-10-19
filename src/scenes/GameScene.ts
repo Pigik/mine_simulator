@@ -10,6 +10,7 @@ import { createUtilityButtons } from '../ui/UtilityButtons';
 import { setAdOverlayOpen } from '../audio/SoundPrefs';
 import { t, type TranslationKey } from '../i18n';
 import { setGameplayWantsActive } from '../yandex/GameplayApi';
+import { getYsdk } from '../yandex/sdk';
 
 // Баланс и прокачка
 export const GAME_CONFIG = {
@@ -798,9 +799,9 @@ export class GameScene extends Phaser.Scene {
         const goToMenu = () => this.scene.start('MainMenuScene');
 
         const runDurationMs = this.game.loop.time - this.runStartTime;
-        const ysdk = (window as any).ysdk;
+        const ysdk = getYsdk();
 
-        if (runDurationMs < this.INTERSTITIAL_MIN_RUN_MS || typeof ysdk === 'undefined' || ysdk === null) {
+        if (runDurationMs < this.INTERSTITIAL_MIN_RUN_MS || !ysdk) {
             goToMenu();
             return;
         }
@@ -870,7 +871,8 @@ export class GameScene extends Phaser.Scene {
 
             gameOverContainer.add(goText);
 
-            if (typeof (window as any).ysdk !== 'undefined' && (window as any).ysdk !== null) {
+            const ysdk = getYsdk();
+            if (ysdk) {
                 let rewardBtn = this.add.rectangle(0, 60, 480, 60, 0x4CAF50)
                     .setInteractive({ useHandCursor: true }).setStrokeStyle(3, 0xffffff);
 
@@ -881,7 +883,7 @@ export class GameScene extends Phaser.Scene {
                 gameOverContainer.add([rewardBtn, rewardText]);
 
                 rewardBtn.on('pointerdown', () => {
-                    (window as any).ysdk.adv.showRewardedVideo({
+                    ysdk.adv.showRewardedVideo({
                         callbacks: {
                             onOpen: () => {
                                 setAdOverlayOpen(true);

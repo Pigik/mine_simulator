@@ -5,6 +5,7 @@ import { ZH } from './zh';
 import { KO } from './ko';
 import { HI } from './hi';
 import { VI } from './vi';
+import { waitForYsdk } from '../yandex/sdk';
 
 // Локализация. Все видимые строки — ключи словарей (ru.ts и др.).
 // Яндекс Игры требуют автоопределение языка и отсутствие непереведённых надписей.
@@ -46,19 +47,9 @@ function safeNavigatorLanguage(): string | null {
     }
 }
 
-// SDK инициализируется асинхронно (index.html), поэтому ждём window.ysdkReady.
 async function readSdkLanguage(): Promise<string | null> {
     try {
-        const w = window as any;
-        const readyPromise: Promise<any> | undefined = w.ysdkReady;
-        if (!readyPromise || typeof readyPromise.then !== 'function') return null;
-
-        // Не ждём SDK бесконечно (например, при локальной разработке).
-        const ysdk = await Promise.race([
-            readyPromise,
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
-        ]);
-
+        const ysdk = await waitForYsdk();
         return (ysdk && ysdk.environment && ysdk.environment.i18n && typeof ysdk.environment.i18n.lang === 'string')
             ? ysdk.environment.i18n.lang
             : null;

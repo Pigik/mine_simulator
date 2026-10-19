@@ -5,10 +5,7 @@
 // Браузеры разрешают полноэкранный режим только прямо в обработчике клика/тапа,
 // не через промисы и таймеры.
 
-function getYsdk(): any | null {
-    const w = window as any;
-    return (typeof w.ysdk !== 'undefined' && w.ysdk !== null) ? w.ysdk : null;
-}
+import { getYsdk } from './sdk';
 
 function getYsdkFullscreen(): any | null {
     try {

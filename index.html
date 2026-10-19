@@ -13,9 +13,6 @@
       // Промис готовности SDK. Без Яндекс Игр разрешается в null.
       window.ysdkReady = YaGames.init().then(ysdk => {
           window.ysdk = ysdk;
-          if (ysdk.features.LoadingAPI) {
-              ysdk.features.LoadingAPI.ready();
-          }
           return ysdk;
       }).catch(err => {
           console.error("Yandex SDK init failed:", err);
