@@ -1,9 +1,29 @@
-body {
+html, body {
     margin: 0;
     padding: 0;
     background-color: #111;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+}
+
+body {
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
+}
+
+/*
+ * Требование Яндекс Игр (п. 1.6.1): "Лонгтап не приводит к выделению поля
+ * или контекстному меню" — без этих правил долгий тап по canvas на
+ * мобильных открывает системное меню "Сохранить изображение"/выделение
+ * текста, а жест прокрутки/двойной тап может масштабировать страницу.
+ */
+html, body, canvas {
+    touch-action: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
 }

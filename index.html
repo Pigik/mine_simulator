@@ -4,20 +4,39 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>pick_game</title>
-    
+    <!--
+      Финальное название игры — "СИМУЛЯТОР ШАХТЫ" (оно же отображается как
+      заголовок главного меню, см. menu.title в src/i18n/ru.ts) — должно
+      дословно, включая пунктуацию, совпадать с названием в консоли
+      разработчика Яндекс Игр и во всех промо-материалах (см. требования
+      Яндекс Игр к публикации). Ниже — значение ДО того, как SDK определит
+      язык игрока и src/main.ts (см. document.title = t('menu.title'))
+      подставит точный перевод для текущего языка; для русского языка (язык
+      по умолчанию, см. DEFAULT_LOCALE в src/i18n/index.ts) оно и так верное.
+    -->
+    <title>СИМУЛЯТОР ШАХТЫ</title>
+
     <!-- Подключение SDK Яндекс Игр -->
     <script src="https://yandex.ru/games/sdk/v2"></script>
     <script>
       window.ysdk = null;
-      YaGames.init().then(ysdk => {
+      // Сохраняем сам промис инициализации SDK (не только результат в
+      // window.ysdk) — коду на TypeScript (см. src/i18n/index.ts —
+      // автоопределение языка, src/yandex/GameplayApi.ts — GameplayAPI)
+      // он нужен, чтобы один раз дождаться готовности SDK, а не опрашивать
+      // window.ysdk в цикле. Если SDK Яндекс Игр не загрузится (например,
+      // локальная разработка вне платформы) — промис разрешается в null, а
+      // не зависает и не падает с необработанной ошибкой.
+      window.ysdkReady = YaGames.init().then(ysdk => {
           window.ysdk = ysdk;
           // Уведомление платформы о готовности приложения $\mathcal{O}(1)$
           if (ysdk.features.LoadingAPI) {
               ysdk.features.LoadingAPI.ready();
           }
+          return ysdk;
       }).catch(err => {
           console.error("Yandex SDK init failed:", err);
+          return null;
       });
     </script>
   </head>
