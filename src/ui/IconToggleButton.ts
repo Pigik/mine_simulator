@@ -2,12 +2,7 @@ import Phaser from 'phaser';
 import { drawBevelRect } from './bevel';
 import { STONE_COLORS } from './theme';
 
-// Маленькая квадратная кнопка-иконка в той же "каменной" технике, что и
-// createStoneButton (см. StoneButton.ts), но без стрелок и без текстовой
-// подписи — для компактных служебных кнопок в углу экрана (звук,
-// полноэкранный режим). Иконка задаётся обычной текстовой строкой (эмодзи
-// или символ), которую можно поменять снаружи через setIcon — например,
-// чтобы отразить текущее состояние (звук вкл/выкл).
+// Маленькая квадратная кнопка-иконка (звук, полноэкранный режим).
 
 export interface IconToggleButtonHandle {
     container: Phaser.GameObjects.Container;
@@ -22,7 +17,7 @@ function playClickSound(scene: Phaser.Scene) {
         if (scene.cache.audio.exists('click-menu')) {
             scene.sound.play('click-menu', { volume: 0.5 });
         }
-    } catch (e) { /* звук клика не критичен для игры */ }
+    } catch (e) { /* не критично */ }
 }
 
 export function createIconToggleButton(

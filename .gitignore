@@ -22,3 +22,21 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# AI agents: instructions, settings, local data
+AGENTS.md
+CLAUDE.md
+CLAUDE.local.md
+GEMINI.md
+.claude/
+.cursor/
+.cursorrules
+.cursorignore
+.opencode/
+opencode.json
+.windsurf/
+.windsurfrules
+.aider*
+.continue/
+.codex/
+.github/copilot-instructions.md

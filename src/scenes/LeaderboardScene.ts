@@ -8,10 +8,7 @@ import { createUtilityButtons } from '../ui/UtilityButtons';
 import { t } from '../i18n';
 import { setGameplayWantsActive } from '../yandex/GameplayApi';
 
-// Таблица лидеров Яндекс Игр. Сортировка всегда только по глубине (это то,
-// что мы кладём в score лидерборда) — суммарное количество добытых монет
-// хранится в extraData и просто выводится рядом справочно, в сортировке не
-// участвует (см. src/yandex/Leaderboard.ts).
+// Таблица лидеров. Сортировка по глубине, монеты выводятся справочно.
 export class LeaderboardScene extends Phaser.Scene {
     private statusText!: Phaser.GameObjects.Text;
 
@@ -23,8 +20,6 @@ export class LeaderboardScene extends Phaser.Scene {
     }
 
     create() {
-        // Требование Яндекс Игр (см. GameplayApi.ts): таблица лидеров —
-        // тоже не активный геймплей.
         setGameplayWantsActive(false);
 
         if (!this.textures.exists('fallback_bg_main')) {
@@ -46,8 +41,6 @@ export class LeaderboardScene extends Phaser.Scene {
         this.add.tileSprite(800, 450, 1600, 900, bgKey).setAlpha(0.6);
         this.add.rectangle(800, 450, 1600, 900, 0x0a0a12, 0.35);
 
-        // Единая каменная подложка под весь контент таблицы — вместо
-        // отдельных полупрозрачных серых плашек под каждым элементом.
         createStonePanel(this, 800, 460, 1060, 660);
 
         const title = this.add.text(800, 60, t('leaderboard.title'), {
@@ -104,11 +97,7 @@ export class LeaderboardScene extends Phaser.Scene {
         this.loadAvatars(top3);
     }
 
-    // Пьедестал для топ-3: 1 место — по центру и выше всех, 2 — слева, 3 — справа,
-    // с медальным цветом и подписью глубины/монет под каждым. Блоки теперь
-    // рисуются той же "каменной" техникой, что и кнопки/панели (с
-    // соответствующим оттенком — золото/серебро/бронза), а не плоской
-    // цветной заливкой.
+    // Пьедестал топ-3: 1 место по центру, 2 слева, 3 справа.
     private buildPodium(top3: LeaderboardRow[]) {
         type Slot = { x: number; blockH: number; color: number; medal: string; labelSize: string };
         const slots: Record<number, Slot> = {
@@ -135,7 +124,6 @@ export class LeaderboardScene extends Phaser.Scene {
 
             this.add.text(slot.x, avatarY + 48, row.name, statTextStyle(slot.labelSize, '#ffffff')).setOrigin(0.5);
 
-            // Подиумный блок — та же каменная плашка, тонированная в цвет медали.
             const blockY = baseY - slot.blockH / 2 + 40;
             createStonePanel(this, slot.x, blockY, 180, slot.blockH, { accentColor: slot.color });
 
@@ -146,7 +134,7 @@ export class LeaderboardScene extends Phaser.Scene {
         });
     }
 
-    // Простой построчный список для мест с 4-го и ниже.
+    // Места с 4-го и ниже.
     private buildList(rows: LeaderboardRow[], startY: number) {
         if (rows.length === 0) return;
 
@@ -179,11 +167,8 @@ export class LeaderboardScene extends Phaser.Scene {
         return `avatar_lb_${rank}`;
     }
 
-    // Аватарки игроков — это внешние URL с серверов Яндекса, их нельзя
-    // подгрузить заранее в preload(). Грузим их точечно после получения
-    // списка лидеров; если какая-то не загрузится (нет сети, CORS и т.п.),
-    // на месте так и останется нейтральная заглушка fallback_avatar —
-    // это не критично и не должно ломать экран.
+    // Аватарки — внешние URL, грузятся после получения списка.
+    // Если не загрузились, остаётся заглушка fallback_avatar.
     private loadAvatars(top3: LeaderboardRow[]) {
         const toLoad = top3.filter(r => r.avatarUrl && !this.textures.exists(this.avatarKey(r.rank)));
         if (toLoad.length === 0) return;

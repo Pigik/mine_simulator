@@ -1,20 +1,9 @@
-// Утилиты для полноэкранного режима и определения типа устройства.
+// Полноэкранный режим и тип устройства.
+// Яндекс Игры (п. 1.6.1): на мобильных игра должна быть в полноэкранном режиме.
+// Сначала используется SDK, вне Яндекс Игр — браузерный Fullscreen API.
 //
-// Требования Яндекс Игр (см. https://yandex.ru/dev/games/doc/ru/concepts/requirements,
-// п. 1.6.1): "Игра находится в полноэкранном режиме во время игрового
-// процесса или запуска" — обязательно для мобильных устройств.
-//
-// Предпочитаем SDK Яндекс Игр (ysdk.screen.fullscreen.*, ysdk.deviceInfo()) —
-// он корректно работает и внутри мобильных обёрток/веб-вью платформы, где
-// обычный браузерный Fullscreen API может вести себя иначе. Если игра
-// запущена не на Яндекс Играх (например, локальная разработка) или нужный
-// метод SDK недоступен — тихо откатываемся на стандартный Fullscreen API
-// браузера и на проверку navigator.userAgent.
-//
-// ВАЖНО: большинство браузеров разрешают включать полноэкранный режим
-// только сразу внутри обработчика пользовательского жеста (клик/тап) — не
-// откладывайте вызов requestFullscreen()/requestFullscreenForGameplayIfMobile()
-// через промисы/таймеры, иначе браузер молча откажет.
+// Браузеры разрешают полноэкранный режим только прямо в обработчике клика/тапа,
+// не через промисы и таймеры.
 
 function getYsdk(): any | null {
     const w = window as any;
@@ -30,10 +19,7 @@ function getYsdkFullscreen(): any | null {
     }
 }
 
-// deviceInfo()/isMobile() — часть SDK Яндекс Игр (см. sdk-params). Если
-// недоступны (локальная разработка вне платформы), определяем тип
-// устройства по User-Agent — этого достаточно, чтобы решить, нужен ли
-// автозапрос полноэкранного режима.
+// Без SDK тип устройства определяется по User-Agent.
 export function isMobileDevice(): boolean {
     try {
         const ysdk = getYsdk();
@@ -61,8 +47,7 @@ export function isFullscreenActive(): boolean {
     return !!(d.fullscreenElement || d.webkitFullscreenElement || d.msFullscreenElement);
 }
 
-// Запрашивает полноэкранный режим. Вызывать ТОЛЬКО из обработчика прямого
-// пользовательского действия (клик/тап) — см. предупреждение выше.
+// Вызывать только из обработчика клика/тапа.
 export function requestFullscreen(): void {
     try {
         const fs = getYsdkFullscreen();
@@ -77,7 +62,7 @@ export function requestFullscreen(): void {
         if (el.requestFullscreen) el.requestFullscreen().catch(() => {});
         else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
         else if (el.msRequestFullscreen) el.msRequestFullscreen();
-    } catch (e) { /* полноэкранный режим недоступен — не критично для игры */ }
+    } catch (e) { /* не критично */ }
 }
 
 export function exitFullscreen(): void {
@@ -104,8 +89,6 @@ export function toggleFullscreen(): void {
     else requestFullscreen();
 }
 
-// Подписка на изменение состояния полноэкранного режима (например, игрок
-// сам нажал Esc) — чтобы иконка кнопки могла оставаться актуальной.
 // Возвращает функцию отписки.
 export function onFullscreenChange(cb: () => void): () => void {
     const handler = () => cb();
@@ -119,10 +102,7 @@ export function onFullscreenChange(cb: () => void): () => void {
     };
 }
 
-// Запрашивает полноэкранный режим для геймплея на мобильных устройствах —
-// вызывать напрямую из обработчика клика/тапа по кнопке "Играть" (см.
-// requirements п. 1.6.1 в шапке файла). На десктопе ничего не делает: там
-// полноэкранный режим не обязателен и был бы неожиданным для игрока.
+// Только на мобильных. Вызывать из обработчика нажатия "Играть".
 export function requestFullscreenForGameplayIfMobile(): void {
     if (isMobileDevice() && !isFullscreenActive()) {
         requestFullscreen();

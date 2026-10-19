@@ -2,16 +2,9 @@ import Phaser from 'phaser';
 import { drawBevelRect } from './bevel';
 import { PANEL_COLORS, PANEL_COLORS_HIGHLIGHT, tintBevelColors, type BevelColors } from './theme';
 
-// Статичная "каменная" панель — тот же bevel-стиль, что у кнопок, но без
-// интерактивности. Используется как замена голым полупрозрачным
-// rectangle: фон под текстом баланса в меню, карточки апгрейдов, строки и
-// подиум таблицы лидеров, HUD во время игры.
+// Статичная "каменная" панель (фон HUD, карточек, строк таблицы лидеров).
 export interface StonePanelOptions {
-    // Акцентный оттенок (например золото) вместо серого камня — для
-    // выделенных элементов (например строка текущего игрока в таблице).
     accentColor?: number;
-    // Готовый набор цветов вместо accentColor/highlight — для тонкой
-    // настройки конкретной плашки.
     colors?: BevelColors;
     highlight?: boolean;
     bevel?: number;

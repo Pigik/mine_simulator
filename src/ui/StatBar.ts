@@ -2,10 +2,7 @@ import Phaser from 'phaser';
 import { drawBevelRect } from './bevel';
 import { ACCENT, PANEL_COLORS } from './theme';
 
-// Полоса-индикатор (прочность кирки и т.п.) в каменной рамке вместо голого
-// текста "50/76". Заливка всегда зелёная — её длина показывает, сколько
-// прочности осталось; сама рамка и число поверх неё в стиль не входят и не
-// меняются здесь.
+// Полоса прочности кирки в каменной рамке.
 export interface StatBarHandle {
     container: Phaser.GameObjects.Container;
     setValue: (current: number, max: number) => void;

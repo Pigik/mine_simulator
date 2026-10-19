@@ -7,42 +7,14 @@ import { createUtilityButtons } from '../ui/UtilityButtons';
 import { requestFullscreenForGameplayIfMobile } from '../yandex/PlatformUtils';
 import { t, type TranslationKey } from '../i18n';
 import { setGameplayWantsActive } from '../yandex/GameplayApi';
-// PlayerData/SaveSystem переехали в yandex/CloudSave.ts — там же теперь
-// живёт сохранение через SDK Яндекс Игр (player.getData/setData), а не
-// только в localStorage. Реэкспортируем их отсюда не нужно: GameScene.ts
-// импортирует их напрямую из CloudSave.
 import { SaveSystem, type PlayerData } from '../yandex/CloudSave';
 
-// Экономика прокачки — пересчитана по симуляции реальных формул игры (шансы
-// руд/кузницы, урон/HP, вехи), не на глаз. Раньше у hp/dmg/ore/mult были
-// РАЗНЫЕ темпы роста цены (1.35/1.45/1.40/1.55): при равномерной прокачке
-// всех четырёх это давало не плавный, а УСКОРЯЮЩИЙСЯ рост времени на
-// накопление — цена множителя очков (rate 1.55) с какого-то момента росла
-// заметно быстрее, чем росли доходы игрока, и разрыв между "сколько нужно"
-// и "сколько зарабатываешь" не просто увеличивался, а увеличивался со
-// всё возрастающей скоростью (на 15 уровне это уже +1.2 забега за один
-// уровень прокачки, хотя на 5 уровне было всего +0.1) — ощущалось как
-// внезапная "стена" посреди игры, а не постепенное усложнение.
+// Экономика прокачки. У hp/dmg/ore/mult единый темп роста цены 1.34:
+// он чуть выше роста дохода за забег (~22% за уровень), поэтому время
+// на каждый следующий уровень растёт равномерно, без резкой "стены".
 //
-// Симуляция показала: средний доход за забег при равномерной прокачке
-// растёт примерно на 22-23% за уровень (пока не упирается в потолки вроде
-// макс. уровня кирки и предела шанса руд — это отдельный, ожидаемый
-// "поздний" replay-wall). Чтобы время на накопление росло РАВНОМЕРНО —
-// то есть каждый уровень требовал в одно и то же число раз больше забегов,
-// чем предыдущий, а не по нарастающей — темп роста цены должен превышать
-// темп роста дохода на постоянный (небольшой) множитель. Отсюда единый
-// rate = 1.34 для всех четырёх — даёт стабильный рост "время на уровень"
-// примерно на 5-15% за уровень на всём протяжении прокачки (не 2%, потом
-// 100%). Базовые цены (base) не трогали — они и раньше задавали разумную
-// относительную "стоимость входа", это сохраняет прежнее ощущение первых
-// покупок.
-//
-// У "частоты кузниц" — единственного апгрейда с потолком уровня — цена
-// задана явной таблицей, а не формулой base*rate^level: рост не строго
-// геометрический (constant ratio), а ускоряющийся — ближе к концу шкалы
-// цена скачет заметно резче, чем в начале, и последний, 15-й уровень стоит
-// ощутимо больше, чем "просто следующий шаг" (50 000 — самый дорогой
-// апгрейд в игре, настоящая долгосрочная цель).
+// У кузниц (единственный апгрейд с потолком) цены заданы таблицей:
+// к концу шкалы они растут резче, последний уровень — долгосрочная цель.
 const FORGE_COSTS: number[] = [
     80, 120, 180, 270, 400, 600, 900, 1350, 2000, 3000, 4500, 7000, 11000, 20000, 50000
 ];
@@ -51,12 +23,9 @@ export const FORGE_MAX_LEVEL = FORGE_COSTS.length; // 15
 interface UpgradeDef {
     base?: number;
     rate?: number;
-    // Явная таблица цен по уровням — если задана, используется вместо
-    // base/rate. costs[i] — цена покупки уровня (i+1)-го, т.е. перехода
-    // с уровня i на уровень i+1.
+    // Таблица цен вместо base/rate: costs[i] — цена перехода с уровня i на i+1.
     costs?: number[];
-    // Если задан — после этого уровня апгрейд больше нельзя купить
-    // (в UI на месте цены показывается "MAX").
+    // Максимальный уровень (в UI показывается MAX).
     maxLevel?: number;
 }
 
@@ -76,9 +45,6 @@ export function getUpgradeCost(id: string, level: number): number {
     return Math.floor(def.base! * Math.pow(def.rate!, level));
 }
 
-// Апгрейд считается "выкачанным до предела", если у него задан maxLevel и
-// текущий уровень его достиг — на UpgradeScene вместо цены в этом случае
-// показывается "MAX", а кнопка покупки отключается.
 export function isUpgradeMaxed(id: string, level: number): boolean {
     const def = UPGRADE_DEFS[id];
     return def.maxLevel !== undefined && level >= def.maxLevel;
@@ -98,23 +64,11 @@ export class MainMenuScene extends Phaser.Scene {
     create() {
         this.pData = SaveSystem.load();
 
-        // Требование Яндекс Игр (см. GameplayApi.ts): в главном меню нет
-        // активного геймплея.
         setGameplayWantsActive(false);
 
-        // Фоновая музыка меню не должна перезапускаться при переходах между
-        // вкладками меню (прокачка/лидеры и обратно) — трек общий для всех
-        // этих сцен и просто продолжает играть. ВАЖНО: каждый sound.play()
-        // создаёт НОВЫЙ объект звука, а старые остановленные объекты сами
-        // из менеджера не удаляются — поэтому sound.get() (который отдаёт
-        // самый первый добавленный инстанс с этим ключом) после пары
-        // заходов в игру и обратно находит старый мёртвый инстанс вместо
-        // реально играющего, и ошибочно считает, что музыка не играет.
-        // Поэтому проверяем через getAll(), не играет ли уже ХОТЬ ОДИН
-        // инстанс bgm_menu. Перезапуск (с чисткой мёртвых инстансов) нужен
-        // только когда музыка правда не играет: при первом входе в меню и
-        // при выходе из игры (там GameScene сама останавливает звук через
-        // sound.stopAll() перед scene.start('MainMenuScene')).
+        // Музыка меню не перезапускается при переходах между экранами меню.
+        // Проверяем getAll(), а не get(): get() может вернуть старый
+        // остановленный экземпляр звука вместо играющего.
         const menuMusicPlaying = this.sound.getAll('bgm_menu').some(s => s.isPlaying);
         if (!menuMusicPlaying) {
             this.sound.stopAll();
@@ -142,11 +96,7 @@ export class MainMenuScene extends Phaser.Scene {
         createUtilityButtons(this, 1470, 45);
 
         createStoneButton(this, 800, 480, 420, 90, t('menu.play'), () => {
-            // Требование Яндекс Игр для мобильных устройств (см.
-            // PlatformUtils.ts): игра должна быть в полноэкранном режиме
-            // во время геймплея. Запрос делается прямо в обработчике
-            // клика — это пользовательский жест, без которого браузер
-            // молча откажет во включении полноэкранного режима.
+            // Должно вызываться прямо в обработчике клика, иначе браузер откажет.
             requestFullscreenForGameplayIfMobile();
             this.scene.start('GameScene', this.pData);
         }, '34px');
@@ -170,10 +120,6 @@ export class MainMenuScene extends Phaser.Scene {
         }
     }
 
-    // Каменная панель со статами вместо голого текста поверх фона:
-    // баланс и всего добыто — с иконкой монеты вместо эмодзи 💰, рекорд
-    // глубины — без иконки, но выровнен по той же левой границе. Все
-    // цифры жирные с толстой обводкой, чтобы не терялись на фоне.
     private buildStatsPanel(centerX: number, centerY: number) {
         const panelW = 620;
         const panelH = 176;
@@ -198,12 +144,7 @@ export class MainMenuScene extends Phaser.Scene {
 export class UpgradeScene extends Phaser.Scene {
     private pData!: PlayerData;
     private balanceText!: Phaser.GameObjects.Text;
-    // Кнопки покупки апгрейдов вместе с геттером их текущей цены — нужно,
-    // чтобы после любой покупки пересчитать подсветку СРАЗУ у всех строк
-    // (баланс уменьшился, значит какие-то ещё апгрейды могли перестать
-    // быть по карману), а не только у той, которую купили. getCost вернёт
-    // null, а isMaxed — true, когда апгрейд уже выкачан до предела (см.
-    // "частота верстаков" — единственный с потолком уровня).
+    // Нужны, чтобы после покупки пересчитать подсветку у всех строк.
     private upgradeHandles: { buyBtn: StoneButtonHandle; getCost: () => number | null; isMaxed: () => boolean }[] = [];
 
     constructor() { super('UpgradeScene'); }
@@ -216,13 +157,9 @@ export class UpgradeScene extends Phaser.Scene {
     create() {
         this.pData = SaveSystem.load();
 
-        // Требование Яндекс Игр (см. GameplayApi.ts): экран прокачки —
-        // тоже не активный геймплей.
         setGameplayWantsActive(false);
 
-        // Сцена переиспользуется при каждом возврате в "Прокачку" — без
-        // сброса сюда бы копились хендлы кнопок с прошлых заходов,
-        // указывающие на уже уничтоженные объекты.
+        // Сцена переиспользуется, сбрасываем хендлы с прошлого захода.
         this.upgradeHandles = [];
 
         if (!this.textures.exists('fallback_bg_upg')) {
@@ -255,13 +192,7 @@ export class UpgradeScene extends Phaser.Scene {
             { id: 'dmg', nameKey: 'upgrade.dmg.name' as const, getLvl: () => this.pData.lvlDamage, setLvl: (v: number) => { this.pData.lvlDamage = v; }, y: 340, color: '#FF5722' },
             { id: 'mult', nameKey: 'upgrade.mult.name' as const, getLvl: () => this.pData.lvlMult, setLvl: (v: number) => { this.pData.lvlMult = v; }, y: 445, color: '#2196F3' },
             { id: 'ore', nameKey: 'upgrade.ore.name' as const, getLvl: () => this.pData.lvlOre, setLvl: (v: number) => { this.pData.lvlOre = v; }, y: 550, color: '#9C27B0' },
-            // ПРИМЕЧАНИЕ: поле в сохранении (pData.lvlBench) не переименовано
-            // вместе с апгрейдом — это persisted-поле (см. PlayerData в
-            // yandex/CloudSave.ts), и переименование здесь молча обнулило бы
-            // уровень кузницы у всех, кто уже играл (старое сохранение просто
-            // не содержит нового ключа). "bench" остался только как имя этого
-            // внутреннего поля, наружу (тексты, id апгрейда) игрок его больше
-            // не видит.
+            // lvlBench — старое имя поля сохранения, не переименовано ради совместимости.
             { id: 'forge', nameKey: 'upgrade.forge.name' as const, getLvl: () => this.pData.lvlBench, setLvl: (v: number) => { this.pData.lvlBench = v; }, y: 655, color: '#FFC107' }
         ];
 
@@ -296,8 +227,6 @@ export class UpgradeScene extends Phaser.Scene {
 
                 maxed = isUpgradeMaxed(u.id, currentLvl);
                 if (maxed) {
-                    // Апгрейд выкачан до предела — дальше покупать нечего,
-                    // вместо цены показываем MAX и отключаем кнопку.
                     cost = null;
                     buyBtn.setLabel(t('common.max'));
                     buyBtn.setEnabled(false);
@@ -306,9 +235,6 @@ export class UpgradeScene extends Phaser.Scene {
                     buyBtn.setLabel(t('upgrade.buy', { cost }));
                 }
 
-                // Покупка меняет баланс — пересчитываем подсветку у ВСЕХ
-                // строк, а не только у этой (соседние апгрейды могли стать
-                // недоступны).
                 this.refreshAffordability();
             } else {
                 this.cameras.main.shake(150, 0.005);
@@ -323,11 +249,7 @@ export class UpgradeScene extends Phaser.Scene {
         this.upgradeHandles.push({ buyBtn, getCost: () => cost, isMaxed: () => maxed });
     }
 
-    // Апгрейды, на которые хватает монет прямо сейчас, подсвечиваются более
-    // ярким жёлтым; те, на которые не хватает — приглушённым, тусклым
-    // золотым (кнопка при этом остаётся кликабельной — клик по ней всё
-    // так же трясёт камеру в знак "не хватает денег"). Уже выкачанные до
-    // предела (MAX) апгрейды не трогаем — они уже в отключённом виде.
+    // Ярко — апгрейд по карману, тускло — нет. Кнопки MAX не трогаем.
     private refreshAffordability() {
         this.upgradeHandles.forEach(h => {
             if (h.isMaxed()) return;

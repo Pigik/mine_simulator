@@ -2,31 +2,18 @@ import Phaser from 'phaser';
 import { drawBevelRect } from './bevel';
 import { STONE_COLORS, tintBevelColors, type BevelColors } from './theme';
 
-// Кнопка в классическом аркадном "каменном" стиле: серая плашка со
-// скошенными краями (светлая грань сверху-слева, тёмная снизу-справа),
-// при наведении — лёгкая подсветка, жёлтый текст и стрелки по бокам ("> ТЕКСТ <"),
-// при нажатии — кнопка "вдавливается". Всё рисуется процедурно через Graphics,
-// без внешних текстур — работает для любого текста и размера.
-//
-// Сама заливка/фаска теперь рисуется общей функцией drawBevelRect (см.
-// src/ui/bevel.ts) — её же использует StonePanel для HUD/карточек/таблицы
-// лидеров, поэтому весь UI визуально остаётся одним и тем же "материалом".
+// "Каменная" кнопка, рисуется процедурно. При наведении — подсветка и
+// стрелки "> ТЕКСТ <", при нажатии — вдавливается.
 
 export interface StoneButtonHandle {
     container: Phaser.GameObjects.Container;
     setLabel: (text: string) => void;
     setEnabled: (enabled: boolean) => void;
-    // Меняет акцентный цвет плашки уже после создания (например, чтобы
-    // подсветить кнопку покупки апгрейда ярче/тусклее в зависимости от
-    // того, хватает ли монет) и сразу перерисовывает её в текущем
-    // состоянии (idle/hover/disabled).
     setAccentColor: (color: number | undefined) => void;
 }
 
 export interface StoneButtonOptions {
-    // Акцентный цвет — плашка окрашивается в его оттенок вместо серого
-    // камня, сохраняя ту же форму/фаску. Например ACCENT.gold для
-    // позитивных действий (в отличие от тревожного красного).
+    // Оттенок вместо серого камня, например ACCENT.gold.
     accentColor?: number;
 }
 
@@ -35,7 +22,7 @@ function playClickSound(scene: Phaser.Scene) {
         if (scene.cache.audio.exists('click-menu')) {
             scene.sound.play('click-menu', { volume: 0.5 });
         }
-    } catch (e) { /* звук клика не критичен для игры */ }
+    } catch (e) { /* не критично */ }
 }
 
 type ButtonState = 'idle' | 'hover' | 'down' | 'disabled';

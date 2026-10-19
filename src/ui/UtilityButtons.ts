@@ -8,16 +8,7 @@ const MUTE_ICON_OFF = '🔇';
 const FULLSCREEN_ICON_ENTER = '⛶';
 const FULLSCREEN_ICON_EXIT = '🗗';
 
-// Кнопки звука и полноэкранного режима — общие для всех экранов игры
-// (меню, прокачка, лидеры, сам забег), поэтому вынесены в одно место,
-// чтобы вести себя и выглядеть одинаково везде.
-//
-// Кнопка звука — рекомендация (не строгое, но проверяемое требование)
-// критериев модерации Яндекс Игр: "добавлена возможность отключения
-// звука". Кнопка полноэкранного режима — ручная подстраховка на случай,
-// если автозапрос при старте забега (см. requestFullscreenForGameplayIfMobile
-// в MenuScene.ts) браузер заблокировал как вызванный не напрямую жестом
-// пользователя, а также способ выйти из полноэкранного режима вручную.
+// Кнопки звука и полноэкранного режима, общие для всех экранов.
 export function createUtilityButtons(scene: Phaser.Scene, x: number, y: number, size = 46, gap = 10) {
     const game = scene.game;
 
@@ -44,9 +35,7 @@ export function createUtilityButtons(scene: Phaser.Scene, x: number, y: number, 
         fsBtn.setIcon(isFullscreenActive() ? FULLSCREEN_ICON_EXIT : FULLSCREEN_ICON_ENTER);
     });
 
-    // Сцены Phaser переиспользуются: create() вызывается заново при каждом
-    // scene.start() в неё, поэтому без отписки document-обработчик
-    // fullscreenchange копился бы с каждым новым посещением сцены.
+    // create() вызывается при каждом scene.start(), без отписки обработчики копились бы.
     scene.events.once(Phaser.Scenes.Events.SHUTDOWN, unsubscribeFullscreen);
     scene.events.once(Phaser.Scenes.Events.DESTROY, unsubscribeFullscreen);
 
